@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>B13 clip</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  #wrap { position: fixed; inset: 0; pointer-events: none; }
+  /* video agrandie pour remplir l'ecran sans bandes noires (16/9) */
+  #player { position: absolute; top: 50%; left: 50%; width: 177.78vh; height: 56.25vw;
+            min-width: 100vw; min-height: 100vh; transform: translate(-50%, -50%); }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="player"></div></div>
+<script>
+  // Banlieusard 13 RP - clip pour l'ecran de chargement FiveM
+  // Utilisation : index.html?v=ID_YOUTUBE&start=30&vol=40
+  var q = new URLSearchParams(location.search);
+  var VID = q.get('v') || 'vwEp4JjCInk';
+  var START = parseInt(q.get('start') || '30', 10);
+  var VOL = parseInt(q.get('vol') || '40', 10);
+  var player;
+
+  function tell(msg) { try { parent.postMessage({ b13clip: msg }, '*'); } catch (e) {} }
+
+  var tag = document.createElement('script');
+  tag.src = 'https://www.youtube.com/iframe_api';
+  document.head.appendChild(tag);
+
+  window.onYouTubeIframeAPIReady = function () {
+    player = new YT.Player('player', {
+      videoId: VID,
+      host: 'https://www.youtube.com',
+      playerVars: { autoplay: 1, start: START, controls: 0, disablekb: 1, fs: 0, rel: 0,
+                    modestbranding: 1, iv_load_policy: 3, playsinline: 1, origin: location.origin },
+      events: {
+        onReady: function (e) { e.target.setVolume(VOL); e.target.unMute(); e.target.playVideo(); tell('ready'); },
+        onStateChange: function (e) {
+          if (e.data === 1) tell('playing');
+          if (e.data === 0) { player.seekTo(START, true); player.playVideo(); }   // reboucle a START
+        },
+        onError: function (e) { tell('error ' + e.data); }
+      }
+    });
+  };
+
+  // le loading screen peut regler le volume / pause
+  window.addEventListener('message', function (e) {
+    var d = e.data || {};
+    if (!player || !player.setVolume) return;
+    if (typeof d.volume === 'number') { player.setVolume(d.volume); if (d.volume > 0) player.unMute(); }
+    if (d.cmd === 'play') player.playVideo();
+    if (d.cmd === 'pause') player.pauseVideo();
+    if (d.cmd === 'mute') player.mute();
+  });
+</script>
+</body>
+</html>
